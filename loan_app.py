@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import pickle
 import warnings
+import os
+from pathlib import Path
+
 warnings.filterwarnings('ignore')
 
 # Set page config
@@ -11,29 +14,37 @@ st.set_page_config(page_title="Loan Approval Predictor", layout="wide")
 # Load models and encoders
 @st.cache_resource
 def load_models():
-    with open('best_model.pkl', 'rb') as f:
-        best_model = pickle.load(f)
-    
-    with open('all_models.pkl', 'rb') as f:
-        all_models = pickle.load(f)
-    
-    with open('label_encoders.pkl', 'rb') as f:
-        label_encoders = pickle.load(f)
-    
-    with open('feature_names.pkl', 'rb') as f:
-        feature_names = pickle.load(f)
-    
-    with open('results.pkl', 'rb') as f:
-        results = pickle.load(f)
-    
-    return best_model, all_models, label_encoders, feature_names, results
+    try:
+        # Try current directory first
+        model_files = {
+            'best_model.pkl': 'best_model.pkl',
+            'all_models.pkl': 'all_models.pkl',
+            'label_encoders.pkl': 'label_encoders.pkl',
+            'feature_names.pkl': 'feature_names.pkl',
+            'results.pkl': 'results.pkl'
+        }
+        
+        data = {}
+        for key, filename in model_files.items():
+            file_path = Path(filename)
+            if not file_path.exists():
+                file_path = Path(__file__).parent / filename
+            
+            if file_path.exists():
+                with open(file_path, 'rb') as f:
+                    data[key] = pickle.load(f)
+            else:
+                raise FileNotFoundError(f"{filename} not found")
+        
+        return (data['best_model.pkl'], data['all_models.pkl'], 
+                data['label_encoders.pkl'], data['feature_names.pkl'], 
+                data['results.pkl'])
+    except Exception as e:
+        st.error(f"Error loading models: {str(e)}")
+        return None, None, None, None, None
 
-try:
-    best_model, all_models, label_encoders, feature_names, results = load_models()
-    models_loaded = True
-except:
-    models_loaded = False
-    st.error("⚠️ Models not found! Please run model_training.py first.")
+best_model, all_models, label_encoders, feature_names, results = load_models()
+models_loaded = all([best_model, all_models, label_encoders, feature_names, results])
 
 # Title and description
 st.title("🏦 Loan Approval Prediction System")
